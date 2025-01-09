@@ -1,0 +1,65 @@
+sweep:
+  name: sweep-cifar100-vit-wave_high_ladder_cir
+  method: bayes
+  metric:
+    goal: maximize
+    name: best_metric
+  parameters:
+    data_dir:
+      value: /home/ycm/datasets/peft/cifar-100-python
+    dataset:
+      value: torch/cifar100
+    num_classes:
+      value: 100
+    model:
+      value: vit_base_patch16_224_in21k
+    batch_size:
+      value: 32
+      # value: 512
+    epochs:
+      value: 100
+    opt:
+      value: adamw
+    model_ema:
+      value: true
+    model_ema_decay:
+      # distribution: uniform
+      # min: 0.9999
+      # max: 0.99999
+      value: 0.99992
+    warmup_epochs:
+      value: 10 # 10% of total epochs 参考BERT
+    weight_decay:
+      # distribution: uniform
+      # min: 0.01
+      # max: 0.1
+      distribution: log_uniform_values
+      min: 1e-4
+      max: 1e-1
+    warmup_lr:
+      distribution: log_uniform_values
+      min: 1e-8
+      max: 1e-6
+    lr:
+      distribution: log_uniform_values
+      min: 1e-6
+      max: 1e-2
+    min_lr:
+      value: 1e-8
+    drop_path:
+      value: 0
+    img_size:
+      value: 224
+
+    output:
+      value: output/vit_base_patch16_224_in21k/cifar_100/wave_high_ladder
+    amp:
+      value: true
+    tuning_mode:
+      value: None
+    yuequ_method:
+      value: wave_high_ladder
+    pretrained:
+      value: true
+    log_wandb:
+      value: true
