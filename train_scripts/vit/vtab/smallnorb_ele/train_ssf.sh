@@ -7,4 +7,4 @@ CUDA_VISIBLE_DEVICES=0,1,  python  -m torch.distributed.launch --nproc_per_node=
     --drop-path 0.2 --img-size 224 \
 	--mixup 0 --cutmix 0 --smoothing 0 \
 	--output  output/vit_base_patch16_224_in21k/vtab/smallnorb_ele/ssf \
-	--amp --tuning-mode ssf --pretrained  
+	--amp --tuning-mode ssf --pretrained  --resume output/vit_base_patch16_224_in21k/vtab/smallnorb_ele/ssf/20240823-105111-vit_base_patch16_224_in21k-224/checkpoint-89.pth.tar

@@ -1,5 +1,5 @@
-CUDA_VISIBLE_DEVICES=0,1, python  -m torch.distributed.launch --nproc_per_node=2  --master_port=19547  \
-	train.py /path/to/vtab-1k/cifar  --dataset cifar100 --num-classes 100  --no-aug --direct-resize --model vit_base_patch16_224_in21k  \
+CUDA_VISIBLE_DEVICES=2,6 python  -m torch.distributed.launch --nproc_per_node=2  --master_port=19547  \
+	train.py ~/datasets/peft/vtab-1k/cifar  --dataset cifar100 --num-classes 100  --no-aug --direct-resize --model vit_base_patch16_224_in21k  \
     --batch-size 32 --epochs 100 \
 	--opt adamw  --weight-decay 5e-5 \
     --warmup-lr 1e-7 --warmup-epochs 10  \
