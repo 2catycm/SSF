@@ -33,7 +33,10 @@ from timm.data import resolve_data_config, Mixup, FastCollateMixup, AugMixDatase
 
 
 from timm.models import create_model, safe_model_name, resume_checkpoint, load_checkpoint,\
-    convert_splitbn_model, model_parameters
+    model_parameters
+    # convert_splitbn_model, model_parameters
+    
+from timm.layers import convert_splitbn_model
 from timm.utils import *
 from timm.loss import *
 
@@ -83,23 +86,37 @@ parser.add_argument('-c', '--config', default='', type=str, metavar='FILE',
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 
 # Dataset parameters
-parser.add_argument('data_dir', metavar='DIR',
+# parser.add_argument('data_dir', metavar='DIR',
+parser.add_argument('--data_dir', metavar='DIR',
+# parser.add_argument('data_dir', '--data_dir', metavar='DIR',
+                    # default='/home/ycm/datasets/peft/vtab-1k/caltech101', 
+                    default='/home/ycm/datasets/peft/cifar-100-python', 
                     help='path to dataset')
-parser.add_argument('--dataset', '-d', metavar='NAME', default='',
+parser.add_argument('--dataset', '-d', metavar='NAME', 
+                    # default='caltech101',
+                    default='torch/cifar100',
                     help='dataset type (default: ImageFolder/ImageTar if empty)')
 parser.add_argument('--train-split', metavar='NAME', default='train',
                     help='dataset train split (default: train)')
 parser.add_argument('--val-split', metavar='NAME', default='validation',
                     help='dataset validation split (default: validation)')
-parser.add_argument('--dataset-download', action='store_true', default=False,
+parser.add_argument('--dataset-download', action='store_true', 
+                    # default=False,
+                    default=True,
                     help='Allow download of dataset for torch/ and tfds/ datasets that support it.')
 parser.add_argument('--class-map', default='', type=str, metavar='FILENAME',
                     help='path to class to idx mapping file (default: "")')
 
 # Model parameters
-parser.add_argument('--model', default='resnet50', type=str, metavar='MODEL',
+# create model的时候使用
+parser.add_argument('--model', 
+                    # default='resnet50',
+                    default='vit_base_patch16_224_in21k',
+                    type=str, metavar='MODEL',
                     help='Name of model to train (default: "resnet50"')
-parser.add_argument('--pretrained', action='store_true', default=False,
+parser.add_argument('--pretrained', action='store_true', 
+                    # default=False,
+                    default=True,
                     help='Start with pretrained version of specified network (if avail)')
 parser.add_argument('--initial-checkpoint', default='', type=str, metavar='PATH',
                     help='Initialize model from this checkpoint (default: none)')
@@ -107,13 +124,22 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='Resume full model and optimizer state from checkpoint (default: none)')
 parser.add_argument('--no-resume-opt', action='store_true', default=False,
                     help='prevent resume of optimizer state when resuming model')
-parser.add_argument('--num-classes', type=int, default=None, metavar='N',
+parser.add_argument('--num-classes', type=int,
+                    # default=None, 
+                    # default=102, 
+                    default=100, 
+                    metavar='N',
                     help='number of label classes (Model default if None)')
 parser.add_argument('--gp', default=None, type=str, metavar='POOL',
                     help='Global pool type, one of (fast, avg, max, avgmax, avgmaxc). Model default if None.')
+# 似乎没有用到
 parser.add_argument('--img-size', type=int, default=None, metavar='N',
                     help='Image patch size (default: None => model default)')
-parser.add_argument('--input-size', default=None, nargs=3, type=int,
+# data_config 是args的一部分
+parser.add_argument('--input-size',
+                    # default=None,
+                    default=(3, 518, 518),
+                    nargs=3, type=int,
                     metavar='N N N', help='Input all image dimensions (d h w, e.g. --input-size 3 224 224), uses model default if empty')
 parser.add_argument('--crop-pct', default=None, type=float,
                     metavar='N', help='Input image center crop percent (for validation only)')
@@ -138,17 +164,41 @@ parser.add_argument('--grad-checkpointing', action='store_true', default=False,
 
 
 # finetuning
-parser.add_argument('--tuning-mode', default=None, type=str,
+def str_to_none(val):
+    if val.lower() == 'none':
+        return None
+    return val
+parser.add_argument('--tuning-mode', 
+                    default=None, 
+                    type=str_to_none,
+                    choices=['ssf',  None, "linear_probe"], # full 就是None
                     help='Method of fine-tuning (default: None')
 
+# 可以加入到库的功能里面，让大家一键引入这个参数。
+# DEBUG的是否可以改参数默认值，但是自动脚本记得改回None。
+parser.add_argument('--yuequ-method',
+                    default='wave_high_ladder'
+                    # default='wave_high_shoulder'
+                    # default=None
+                    , type=str_to_none, 
+                    choices=['wave_high_ladder', None, 'wave_high_shoulder'],
+                    help='Method of yuequ fine-tuning (default: None')
+
+parser.add_argument('--yuequ-model', 
+                    # default='resnet50',
+                    # default='vit_small_patch16_224_in21k',
+                    default='vit_tiny_patch16_224_in21k',
+                    type=str, metavar='MODEL',
+                    help='Name of model to train (default: "resnet50"')
 
 parser.add_argument('--evaluate', action='store_true', default=False,
                     help='evaluate')
 
 
 # Optimizer parameters
+# optimizer_kwargs
 parser.add_argument('--opt', default='sgd', type=str, metavar='OPTIMIZER',
-                    help='Optimizer (default: "sgd"')
+                    help='Optimizer (default: "sgd"') # 类型
 parser.add_argument('--opt-eps', default=None, type=float, metavar='EPSILON',
                     help='Optimizer Epsilon (default: None, use opt default)')
 parser.add_argument('--opt-betas', default=None, type=float, nargs='+', metavar='BETA',
@@ -325,10 +375,13 @@ parser.add_argument('--eval-metric', default='top1', type=str, metavar='EVAL_MET
                     help='Best metric (default: "top1"')
 parser.add_argument('--tta', type=int, default=0, metavar='N',
                     help='Test/inference time augmentation (oversampling) factor. 0=None (default: 0)')
-parser.add_argument("--local_rank", default=0, type=int)
+# parser.add_argument("--local_rank", default=0, type=int)
+parser.add_argument("--local-rank", default=0, type=int)
 parser.add_argument('--use-multi-epochs-loader', action='store_true', default=False,
                     help='use the multi-epochs-loader to save time at the beginning of every epoch')
-parser.add_argument('--log-wandb', action='store_true', default=False,
+parser.add_argument('--log-wandb', action='store_true', 
+                    # default=False,
+                    default=True,
                     help='log training and validation metrics to wandb')
 
 
@@ -356,6 +409,21 @@ def main():
     if args.log_wandb:
         if has_wandb:
             wandb.init(project=args.experiment, config=args)
+            # args|=wandb.config # 优先使用wandb sweep的参数
+            # args.__dict__ |= wandb
+            # print(args.__dict__)
+            # print(wandb.config.dict())
+            # import sys
+            # sys.exit()
+            # wandb.config.update(args)
+            # wandb.config.update(allow_val_change=True)
+            # args = wandb.config
+            args = dict(wandb.config._items)
+            args = argparse.Namespace(**args)
+            
+            import json
+            # print(json.dumps(dict(wandb.config._items), indent=4))
+            print(json.dumps(vars(args), indent=4))
         else: 
             _logger.warning("You've requested to log metrics to wandb but package not found. "
                             "Metrics not being logged to wandb, try `pip install wandb`")
@@ -369,7 +437,10 @@ def main():
     args.rank = 0  # global rank
     if args.distributed:
         args.device = 'cuda:%d' % args.local_rank
+        # print(args.local_rank)
+        # print(args.device)
         torch.cuda.set_device(args.local_rank)
+        # torch.cuda.set_device(args.device)
         torch.distributed.init_process_group(backend='nccl', init_method='env://')
         args.world_size = torch.distributed.get_world_size()
         args.rank = torch.distributed.get_rank()
@@ -414,8 +485,60 @@ def main():
         scriptable=args.torchscript,
         checkpoint_path=args.initial_checkpoint,
         tuning_mode=args.tuning_mode)
+    from bigmodelvis import Visualization
+    Visualization(model).structure_graph()
+    if args.yuequ_method:
+        import bo_guan_yue_qu
+        from transformers import AutoModelForImageClassification, TrainingArguments, Trainer, AutoModel
+        
+        if args.yuequ_method == "wave_high_ladder":
+            from bo_guan_yue_qu.algorithms.wave_high import AlignedLadderWaveHighModel
+            
+            # waver = AutoModel.from_pretrained("facebook/dinov2-small")
+            from models.vision_transformer import vit_tiny_patch16_224_in21k
+            # waver = vit_tiny_patch16_224_in21k(pretrained=False) # 可以ablation study
+            # waver = vit_tiny_patch16_224_in21k(pretrained=True) 
+            waver = create_model(
+                # "vit_tiny_patch16_224_in21k",
+                args.yuequ_model,
+                pretrained=args.pretrained,
+                num_classes=args.num_classes,
+                drop_rate=args.drop,
+                drop_connect_rate=args.drop_connect,  # DEPRECATED, use drop_path
+                drop_path_rate=args.drop_path,
+                drop_block_rate=args.drop_block,
+                global_pool=args.gp,
+                bn_momentum=args.bn_momentum,
+                bn_eps=args.bn_eps,
+                scriptable=args.torchscript,
+                checkpoint_path=args.initial_checkpoint,
+                tuning_mode=args.tuning_mode)
+            # wavers = waver.encoder.layer
+            wavers = waver.blocks
+            mountain = model
+            mountain_peaks = mountain.blocks
+            
+            model = AlignedLadderWaveHighModel(mountain, waver, mountain_peaks, wavers, 768, 
+                                            #    192
+                                               384
+                                               )
 
-    
+        elif args.yuequ_method == "wave_high_shoulder":
+            from bo_guan_yue_qu.algorithms.wave_high import AlignedResidualWaveHighMaker
+            # waver = AutoModel.from_pretrained("facebook/dinov2-small")
+            from models.vision_transformer import vit_tiny_patch16_224_in21k
+            waver = vit_tiny_patch16_224_in21k(pretrained=False) 
+            # wavers = waver.encoder.layer
+            wavers = waver.blocks
+            
+
+            mountain = model
+            # mountain_peaks = mountain.dinov2.encoder.layer
+            mountain_peaks = mountain.blocks
+            # model = AlignedResidualWaveHighMaker(mountain, waver, mountain_peaks, wavers, 768, 384)
+            model = AlignedResidualWaveHighMaker(mountain, waver, mountain_peaks, wavers, 768, 192)
+
+
     if args.num_classes is None:
         assert hasattr(model, 'num_classes'), 'Model must have `num_classes` attr if not set on cmd line/config.'
         args.num_classes = model.num_classes  # FIXME handle model default vs config num_classes more elegantly
@@ -680,8 +803,17 @@ def main():
 
         return
         
+    Visualization(model).structure_graph()
+    from bo_guan_yue_qu.benchmark import num_trainable_parameters
+    print("number of trainable parameters: ", num_trainable_parameters(model))
+    # 11511891
+    # 208900
+    
     try:
         for epoch in range(start_epoch, num_epochs):
+            os.environ['EPOCH'] = str(epoch)
+            # 为了 epoch = int(os.environ.get('EPOCH', 0))
+            
             if args.distributed and hasattr(loader_train.sampler, 'set_epoch'):
                 loader_train.sampler.set_epoch(epoch)
 
@@ -722,6 +854,8 @@ def main():
         pass
     if best_metric is not None:
         _logger.info('*** Best metric: {0} (epoch {1})'.format(best_metric, best_epoch))
+        if args.log_wandb:
+            wandb.log({'best_metric': best_metric})
 
 
 def train_one_epoch(
